@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  pull_request:
+    branches: ["main"]
+  push:
+    branches: ["main"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+
+      - name: Compile source
+        run: |
+          python -m py_compile app/config.py app/database.py app/ids.py app/models.py app/auth.py app/http_runtime.py app/profiles.py app/main.py cli.py run.py
+
+      - name: Import app and CLI
+        run: |
+          python -c "from app.main import app; import cli; print(app.title)"
