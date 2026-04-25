@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+insighta.db
+profiles.csv
+profiles_*.csv
