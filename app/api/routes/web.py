@@ -8,7 +8,12 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_optional_web_user, require_web_user, validate_web_csrf
+from app.api.dependencies import (
+    get_optional_web_user,
+    parse_optional_int,
+    require_web_user,
+    validate_web_csrf,
+)
 from app.api.web_support import template_context, templates
 from app.config import get_settings
 from app.database import get_db
@@ -88,17 +93,19 @@ def web_profiles(
     gender: str | None = None,
     country: str | None = None,
     age_group: str | None = None,
-    min_age: int | None = None,
-    max_age: int | None = None,
+    min_age: str | None = None,
+    max_age: str | None = None,
     page: int = 1,
 ):
     user = require_web_user(request, db)
+    parsed_min_age = parse_optional_int(min_age, "min_age")
+    parsed_max_age = parse_optional_int(max_age, "max_age")
     stmt = build_list_query(
         gender=gender,
         country=country,
         age_group=age_group,
-        min_age=min_age,
-        max_age=max_age,
+        min_age=parsed_min_age,
+        max_age=parsed_max_age,
     )
     rows, total = paginate(db, stmt, page, 10)
     total_pages = ceil(total / 10) if total else 0
@@ -116,8 +123,8 @@ def web_profiles(
                 "gender": gender or "",
                 "country": country or "",
                 "age_group": age_group or "",
-                "min_age": min_age or "",
-                "max_age": max_age or "",
+                "min_age": parsed_min_age or "",
+                "max_age": parsed_max_age or "",
             },
         ),
     )
