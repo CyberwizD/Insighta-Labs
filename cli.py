@@ -37,7 +37,11 @@ class Credentials:
 
 
 def _api_url(value: str | None) -> str:
-    return (value or DEFAULT_API_URL).rstrip("/")
+    raw = (value or DEFAULT_API_URL).strip()
+    if "://" not in raw:
+        scheme = "http" if raw.startswith(("127.0.0.1", "localhost")) else "https"
+        raw = f"{scheme}://{raw}"
+    return raw.rstrip("/")
 
 
 def _load_credentials() -> Credentials | None:
