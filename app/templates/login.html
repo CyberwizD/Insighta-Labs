@@ -9,9 +9,11 @@
       Local development mode includes a mock GitHub provider so you can test the full OAuth flow without external credentials.
     </p>
     <div class="nav-links">
-      <a class="button" href="/auth/github?mode=web">Continue with GitHub</a>
+      {% if github_enabled %}
+        <a class="button" href="{{ github_login_href }}">Continue with GitHub</a>
+      {% endif %}
       {% if mock_enabled %}
-        <a class="button alt" href="/mock/github/authorize?state={{ state }}&redirect_uri={{ settings.github_callback_url }}&mode=web">Use Local Mock OAuth</a>
+        <a class="button alt" href="{{ mock_login_href }}">Use Mock OAuth</a>
       {% endif %}
     </div>
   </section>
