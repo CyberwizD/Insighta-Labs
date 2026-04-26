@@ -42,25 +42,28 @@ def auth_github(
     request: Request,
     provider: Annotated[str, Query(pattern="^(auto|github|mock)$")] = "auto",
     mode: Annotated[str, Query(pattern="^(web|cli)$")] = "web",
+    cli: str | None = None,
     state: str | None = None,
     code_challenge: str | None = None,
     redirect_uri: str | None = None,
 ):
+    effective_mode = "cli" if cli == "1" else mode
     issued_state = state or generate_state()
     redirect_uri = redirect_uri or build_callback_url(request)
     generated_code_verifier = None
     if not code_challenge:
         generated_code_verifier = generate_code_verifier()
         code_challenge = build_code_challenge(generated_code_verifier)
-    if mode == "web":
+    if effective_mode == "web":
         response = RedirectResponse(
             build_authorize_url(
                 provider=provider,
-                mode=mode,
+                mode=effective_mode,
                 state=issued_state,
                 redirect_uri=redirect_uri,
                 code_challenge=code_challenge,
-            )
+            ),
+            status_code=status.HTTP_302_FOUND,
         )
         response.set_cookie(
             "insighta_oauth_state",
@@ -86,11 +89,12 @@ def auth_github(
     response = RedirectResponse(
         build_authorize_url(
             provider=provider,
-            mode=mode,
+            mode=effective_mode,
             state=issued_state,
             redirect_uri=redirect_uri,
             code_challenge=code_challenge,
-        )
+        ),
+        status_code=status.HTTP_302_FOUND,
     )
     return _set_auth_cors_headers(response)
 
@@ -102,6 +106,7 @@ def auth_github_callback(
     code: str | None = None,
     state: str | None = None,
     mode: str = "web",
+    cli: str | None = None,
     code_verifier: str | None = None,
     redirect_uri: str | None = None,
     username: str | None = None,
@@ -110,10 +115,15 @@ def auth_github_callback(
     if not code or not state:
         raise HTTPException(status_code=400, detail="Both code and state are required")
 
+    explicit_mode = "mode" in request.query_params
+    effective_mode = mode
+    if cli == "1" or (not explicit_mode and code_verifier):
+        effective_mode = "cli"
+
     expected_state = request.cookies.get("insighta_oauth_state")
     expected_redirect_uri = request.cookies.get("insighta_oauth_redirect_uri")
     expected_code_verifier = request.cookies.get("insighta_oauth_code_verifier")
-    if mode == "web":
+    if effective_mode == "web":
         if not expected_state or expected_state != state:
             raise HTTPException(status_code=400, detail="Invalid state value")
         code_verifier = code_verifier or expected_code_verifier
@@ -132,7 +142,7 @@ def auth_github_callback(
     user = upsert_user(db, identity)
     token_bundle = issue_tokens(db, user)
 
-    if mode == "cli":
+    if effective_mode == "cli":
         return _set_auth_cors_headers(JSONResponse(token_bundle))
 
     response = RedirectResponse("/web/dashboard", status_code=status.HTTP_302_FOUND)
@@ -187,7 +197,7 @@ def mock_github_authorize(
     if username:
         code = create_mock_provider_code(username=username, role=role)
         target = f"{redirect_uri}?{urlencode({'code': code, 'state': state, 'mode': mode})}"
-        return RedirectResponse(target)
+        return RedirectResponse(target, status_code=status.HTTP_302_FOUND)
     return templates.TemplateResponse(
         request,
         "mock_authorize.html",
