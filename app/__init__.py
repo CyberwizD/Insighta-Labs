@@ -1,0 +1,1 @@
+"""Insighta Labs application package."""
