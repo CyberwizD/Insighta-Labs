@@ -5,6 +5,7 @@ import secrets
 import urllib.parse
 from datetime import UTC, datetime, timedelta
 from typing import Any
+from urllib.parse import urlunsplit
 from uuid import uuid4
 
 import jwt
@@ -189,18 +190,44 @@ def assign_role(username: str, preferred_role: str | None = None) -> str:
     return "admin" if username.strip().lower() in settings.admin_usernames else "analyst"
 
 
+def external_base_url(request: Request | None = None) -> str:
+    if request is not None:
+        forwarded_proto = request.headers.get("x-forwarded-proto")
+        forwarded_host = request.headers.get("x-forwarded-host")
+        if forwarded_proto and forwarded_host:
+            return f"{forwarded_proto}://{forwarded_host}".rstrip("/")
+        url = request.url
+        return urlunsplit((url.scheme, url.netloc, "", "", "")).rstrip("/")
+    return settings.app_base_url
+
+
+def build_callback_url(request: Request | None = None) -> str:
+    return f"{external_base_url(request)}/auth/github/callback"
+
+
 def build_authorize_url(
     *,
+    provider: str,
     mode: str,
     state: str,
     redirect_uri: str,
     code_challenge: str | None = None,
 ) -> str:
-    base_url = (
-        settings.mock_authorize_url
-        if settings.enable_mock_github or not settings.github_client_id
-        else "https://github.com/login/oauth/authorize"
-    )
+    if provider == "auto":
+        provider = "github" if settings.github_client_id else "mock"
+    if provider == "mock":
+        if not settings.enable_mock_github:
+            raise AuthError("Mock auth is disabled", status.HTTP_404_NOT_FOUND)
+        base_url = settings.mock_authorize_url
+    elif provider == "github":
+        if not settings.github_client_id:
+            raise AuthError(
+                "GitHub OAuth is not configured. Set INSIGHTA_GITHUB_CLIENT_ID first.",
+                status.HTTP_400_BAD_REQUEST,
+            )
+        base_url = "https://github.com/login/oauth/authorize"
+    else:
+        raise AuthError("Unsupported auth provider", status.HTTP_400_BAD_REQUEST)
     query = {
         "client_id": settings.github_client_id or "mock-client-id",
         "redirect_uri": redirect_uri,
@@ -237,7 +264,11 @@ def create_mock_provider_code(username: str, role: str) -> str:
     return _mock_code_payload(username=username, role=role)
 
 
-def exchange_github_code(code: str, code_verifier: str | None = None) -> dict[str, Any]:
+def exchange_github_code(
+    code: str,
+    code_verifier: str | None = None,
+    redirect_uri: str | None = None,
+) -> dict[str, Any]:
     try:
         payload = jwt.decode(code, settings.secret_key, algorithms=["HS256"])
         if payload.get("token_type") == "mock_code":
@@ -264,7 +295,7 @@ def exchange_github_code(code: str, code_verifier: str | None = None) -> dict[st
             "client_id": settings.github_client_id,
             "client_secret": settings.github_client_secret,
             "code": code,
-            "redirect_uri": settings.github_callback_url,
+            "redirect_uri": redirect_uri or build_callback_url(),
             "code_verifier": code_verifier or "",
         },
         timeout=15,
