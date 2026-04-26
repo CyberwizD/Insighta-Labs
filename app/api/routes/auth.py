@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Annotated
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
@@ -14,6 +14,7 @@ from app.config import get_settings
 from app.database import get_db
 from app.services.auth import (
     build_authorize_url,
+    build_callback_url,
     create_mock_provider_code,
     exchange_github_code,
     generate_state,
@@ -29,16 +30,19 @@ router = APIRouter()
 
 @router.get("/auth/github")
 def auth_github(
+    request: Request,
+    provider: Annotated[str, Query(pattern="^(auto|github|mock)$")] = "auto",
     mode: Annotated[str, Query(pattern="^(web|cli)$")] = "web",
     state: str | None = None,
     code_challenge: str | None = None,
     redirect_uri: str | None = None,
 ):
     issued_state = state or generate_state()
+    redirect_uri = redirect_uri or build_callback_url(request)
     if mode == "web":
-        redirect_uri = redirect_uri or settings.github_callback_url
         response = RedirectResponse(
             build_authorize_url(
+                provider=provider,
                 mode=mode,
                 state=issued_state,
                 redirect_uri=redirect_uri,
@@ -50,9 +54,14 @@ def auth_github(
             httponly=True,
             samesite="lax",
         )
+        response.set_cookie(
+            "insighta_oauth_redirect_uri",
+            redirect_uri,
+            httponly=True,
+            samesite="lax",
+        )
         return response
 
-    redirect_uri = redirect_uri or settings.github_callback_url
     if not code_challenge:
         raise HTTPException(
             status_code=400,
@@ -60,6 +69,7 @@ def auth_github(
         )
     return RedirectResponse(
         build_authorize_url(
+            provider=provider,
             mode=mode,
             state=issued_state,
             redirect_uri=redirect_uri,
@@ -76,11 +86,13 @@ def auth_github_callback(
     state: str | None = None,
     mode: str = "web",
     code_verifier: str | None = None,
+    redirect_uri: str | None = None,
 ):
     if not code or not state:
         raise HTTPException(status_code=400, detail="Both code and state are required")
 
     expected_state = request.cookies.get("insighta_oauth_state")
+    expected_redirect_uri = request.cookies.get("insighta_oauth_redirect_uri")
     if mode == "web":
         if not expected_state or expected_state != state:
             raise HTTPException(status_code=400, detail="Invalid state value")
@@ -89,7 +101,11 @@ def auth_github_callback(
             status_code=400, detail="code_verifier is required for CLI mode"
         )
 
-    identity = exchange_github_code(code, code_verifier=code_verifier)
+    identity = exchange_github_code(
+        code,
+        code_verifier=code_verifier,
+        redirect_uri=redirect_uri or expected_redirect_uri or build_callback_url(request),
+    )
     user = upsert_user(db, identity)
     token_bundle = issue_tokens(db, user)
 
@@ -100,6 +116,7 @@ def auth_github_callback(
     set_auth_cookies(response, token_bundle)
     ensure_csrf_cookie(response)
     response.delete_cookie("insighta_oauth_state")
+    response.delete_cookie("insighta_oauth_redirect_uri")
     return response
 
 
