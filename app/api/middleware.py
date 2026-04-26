@@ -6,7 +6,7 @@ from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.responses import JSONResponse, RedirectResponse
 
 from app.api.responses import error
-from app.http_runtime import logger, rate_limiter, request_identity_key
+from app.http_runtime import client_ip, logger, rate_limiter, request_identity_key
 
 
 def register_http_behavior(app: FastAPI) -> None:
@@ -36,7 +36,7 @@ def register_http_behavior(app: FastAPI) -> None:
                 return response
 
         if request.url.path.startswith("/auth/"):
-            key = f"auth:{request.client.host if request.client else 'unknown'}"
+            key = f"auth:{client_ip(request)}"
             if not rate_limiter.allow(key, limit=10):
                 response = error("Rate limit exceeded", status.HTTP_429_TOO_MANY_REQUESTS)
                 logger.info(
