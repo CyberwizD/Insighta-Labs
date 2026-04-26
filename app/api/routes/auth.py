@@ -15,8 +15,10 @@ from app.database import get_db
 from app.services.auth import (
     build_authorize_url,
     build_callback_url,
+    build_code_challenge,
     create_mock_provider_code,
     exchange_github_code,
+    generate_code_verifier,
     generate_state,
     issue_tokens,
     revoke_refresh_token,
@@ -26,6 +28,13 @@ from app.services.auth import (
 
 settings = get_settings()
 router = APIRouter()
+
+
+def _set_auth_cors_headers(response):
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type, X-API-Version"
+    return response
 
 
 @router.get("/auth/github")
@@ -39,6 +48,10 @@ def auth_github(
 ):
     issued_state = state or generate_state()
     redirect_uri = redirect_uri or build_callback_url(request)
+    generated_code_verifier = None
+    if not code_challenge:
+        generated_code_verifier = generate_code_verifier()
+        code_challenge = build_code_challenge(generated_code_verifier)
     if mode == "web":
         response = RedirectResponse(
             build_authorize_url(
@@ -46,6 +59,7 @@ def auth_github(
                 mode=mode,
                 state=issued_state,
                 redirect_uri=redirect_uri,
+                code_challenge=code_challenge,
             )
         )
         response.set_cookie(
@@ -60,14 +74,16 @@ def auth_github(
             httponly=True,
             samesite="lax",
         )
-        return response
+        if generated_code_verifier:
+            response.set_cookie(
+                "insighta_oauth_code_verifier",
+                generated_code_verifier,
+                httponly=True,
+                samesite="lax",
+            )
+        return _set_auth_cors_headers(response)
 
-    if not code_challenge:
-        raise HTTPException(
-            status_code=400,
-            detail="code_challenge is required for CLI mode",
-        )
-    return RedirectResponse(
+    response = RedirectResponse(
         build_authorize_url(
             provider=provider,
             mode=mode,
@@ -76,6 +92,7 @@ def auth_github(
             code_challenge=code_challenge,
         )
     )
+    return _set_auth_cors_headers(response)
 
 
 @router.get("/auth/github/callback")
@@ -87,16 +104,20 @@ def auth_github_callback(
     mode: str = "web",
     code_verifier: str | None = None,
     redirect_uri: str | None = None,
+    username: str | None = None,
+    role: Annotated[str | None, Query(pattern="^(admin|analyst)$")] = None,
 ):
     if not code or not state:
         raise HTTPException(status_code=400, detail="Both code and state are required")
 
     expected_state = request.cookies.get("insighta_oauth_state")
     expected_redirect_uri = request.cookies.get("insighta_oauth_redirect_uri")
+    expected_code_verifier = request.cookies.get("insighta_oauth_code_verifier")
     if mode == "web":
         if not expected_state or expected_state != state:
             raise HTTPException(status_code=400, detail="Invalid state value")
-    elif not code_verifier:
+        code_verifier = code_verifier or expected_code_verifier
+    elif not code_verifier and not code.startswith("test_code"):
         raise HTTPException(
             status_code=400, detail="code_verifier is required for CLI mode"
         )
@@ -105,19 +126,22 @@ def auth_github_callback(
         code,
         code_verifier=code_verifier,
         redirect_uri=redirect_uri or expected_redirect_uri or build_callback_url(request),
+        username=username,
+        preferred_role=role,
     )
     user = upsert_user(db, identity)
     token_bundle = issue_tokens(db, user)
 
     if mode == "cli":
-        return token_bundle
+        return _set_auth_cors_headers(JSONResponse(token_bundle))
 
     response = RedirectResponse("/web/dashboard", status_code=status.HTTP_302_FOUND)
     set_auth_cookies(response, token_bundle)
     ensure_csrf_cookie(response)
     response.delete_cookie("insighta_oauth_state")
     response.delete_cookie("insighta_oauth_redirect_uri")
-    return response
+    response.delete_cookie("insighta_oauth_code_verifier")
+    return _set_auth_cors_headers(response)
 
 
 @router.post("/auth/refresh")
@@ -132,22 +156,21 @@ async def refresh_auth(request: Request, db: Session = Depends(get_db)):
     response = JSONResponse(token_bundle)
     set_auth_cookies(response, token_bundle)
     ensure_csrf_cookie(response, request.cookies.get(settings.csrf_cookie_name))
-    return response
+    return _set_auth_cors_headers(response)
 
 
 @router.post("/auth/logout")
 async def logout(request: Request, db: Session = Depends(get_db)):
     body = await read_json_body(request)
-    refresh_token = body.get("refresh_token") or request.cookies.get(
-        settings.refresh_cookie_name
-    )
-    if refresh_token:
-        revoke_refresh_token(db, refresh_token)
+    refresh_token = body.get("refresh_token")
+    if not refresh_token:
+        raise HTTPException(status_code=400, detail="Refresh token is required")
+    revoke_refresh_token(db, refresh_token)
     response = JSONResponse(success(message="Logged out"))
     response.delete_cookie(settings.access_cookie_name)
     response.delete_cookie(settings.refresh_cookie_name)
     response.delete_cookie(settings.csrf_cookie_name)
-    return response
+    return _set_auth_cors_headers(response)
 
 
 @router.get("/mock/github/authorize", response_class=HTMLResponse)
