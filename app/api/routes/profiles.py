@@ -6,7 +6,12 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_current_user, read_json_body
+from app.api.dependencies import (
+    get_current_user,
+    parse_optional_float,
+    parse_optional_int,
+    read_json_body,
+)
 from app.api.responses import paginated_success, serialize_user, success
 from app.database import get_db
 from app.models import Profile, User
@@ -38,10 +43,10 @@ def list_profiles(
     country_id: str | None = None,
     country: str | None = None,
     age_group: str | None = None,
-    min_age: int | None = None,
-    max_age: int | None = None,
-    min_gender_probability: float | None = None,
-    min_country_probability: float | None = None,
+    min_age: str | None = None,
+    max_age: str | None = None,
+    min_gender_probability: str | None = None,
+    min_country_probability: str | None = None,
     sort_by: str = "created_at",
     order: str = "desc",
     page: int = 1,
@@ -52,6 +57,16 @@ def list_profiles(
         sort_by, order, limit = validate_list_params(
             sort_by=sort_by, order=order, limit=limit
         )
+        parsed_min_age = parse_optional_int(min_age, "min_age")
+        parsed_max_age = parse_optional_int(max_age, "max_age")
+        parsed_min_gender_probability = parse_optional_float(
+            min_gender_probability,
+            "min_gender_probability",
+        )
+        parsed_min_country_probability = parse_optional_float(
+            min_country_probability,
+            "min_country_probability",
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -60,10 +75,10 @@ def list_profiles(
         country_id=country_id,
         country=country,
         age_group=age_group,
-        min_age=min_age,
-        max_age=max_age,
-        min_gender_probability=min_gender_probability,
-        min_country_probability=min_country_probability,
+        min_age=parsed_min_age,
+        max_age=parsed_max_age,
+        min_gender_probability=parsed_min_gender_probability,
+        min_country_probability=parsed_min_country_probability,
         sort_by=sort_by,
         order=order,
     )
@@ -104,10 +119,10 @@ def export_profiles(
     country_id: str | None = None,
     country: str | None = None,
     age_group: str | None = None,
-    min_age: int | None = None,
-    max_age: int | None = None,
-    min_gender_probability: float | None = None,
-    min_country_probability: float | None = None,
+    min_age: str | None = None,
+    max_age: str | None = None,
+    min_gender_probability: str | None = None,
+    min_country_probability: str | None = None,
     sort_by: str = "created_at",
     order: str = "desc",
 ):
@@ -118,6 +133,16 @@ def export_profiles(
         sort_by, order, _ = validate_list_params(
             sort_by=sort_by, order=order, limit=50
         )
+        parsed_min_age = parse_optional_int(min_age, "min_age")
+        parsed_max_age = parse_optional_int(max_age, "max_age")
+        parsed_min_gender_probability = parse_optional_float(
+            min_gender_probability,
+            "min_gender_probability",
+        )
+        parsed_min_country_probability = parse_optional_float(
+            min_country_probability,
+            "min_country_probability",
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -126,10 +151,10 @@ def export_profiles(
         country_id=country_id,
         country=country,
         age_group=age_group,
-        min_age=min_age,
-        max_age=max_age,
-        min_gender_probability=min_gender_probability,
-        min_country_probability=min_country_probability,
+        min_age=parsed_min_age,
+        max_age=parsed_max_age,
+        min_gender_probability=parsed_min_gender_probability,
+        min_country_probability=parsed_min_country_probability,
         sort_by=sort_by,
         order=order,
     )
