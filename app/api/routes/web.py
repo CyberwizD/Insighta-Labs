@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from math import ceil
+from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -12,7 +13,7 @@ from app.api.web_support import template_context, templates
 from app.config import get_settings
 from app.database import get_db
 from app.models import Profile, User
-from app.services.auth import generate_state, revoke_refresh_token
+from app.services.auth import build_callback_url, revoke_refresh_token
 from app.services.profiles import (
     build_list_query,
     paginate,
@@ -29,14 +30,24 @@ def web_login(request: Request, db: Session = Depends(get_db)):
     user = get_optional_web_user(request, db)
     if user:
         return RedirectResponse("/web/dashboard")
+    callback_url = build_callback_url(request)
+    mock_query = urlencode(
+        {
+            "mode": "web",
+            "provider": "mock",
+            "redirect_uri": callback_url,
+        }
+    )
     return templates.TemplateResponse(
         request,
         "login.html",
         template_context(
             request,
             None,
-            state=generate_state(),
+            github_enabled=bool(settings.github_client_id),
+            github_login_href="/auth/github?mode=web&provider=github",
             mock_enabled=settings.enable_mock_github,
+            mock_login_href=f"/auth/github?{mock_query}",
         ),
     )
 
