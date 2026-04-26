@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Dashboard | Insighta Labs+{% endblock %}
+{% block content %}
+  <section class="hero">
+    <span class="eyebrow">Dashboard</span>
+    <h1>Welcome back, {{ user.username }}.</h1>
+    <p>Your current role is <strong>{{ user.role }}</strong>. Use the shared APIs through the web portal or the CLI.</p>
+  </section>
+  <section class="grid cards">
+    <article class="card">
+      <div class="pill">Profiles</div>
+      <div class="metric">{{ total_profiles }}</div>
+      <p>Total records currently available in the intelligence store.</p>
+    </article>
+    <article class="card">
+      <div class="pill">Admins</div>
+      <div class="metric">{{ admin_count }}</div>
+      <p>Users with write access across the platform.</p>
+    </article>
+    <article class="card">
+      <div class="pill">Analysts</div>
+      <div class="metric">{{ analyst_count }}</div>
+      <p>Read-only users consuming search and reporting capabilities.</p>
+    </article>
+  </section>
+  <section class="stack" style="margin-top: 24px;">
+    <h2>Recent Profiles</h2>
+    <table>
+      <thead>
+        <tr><th>Name</th><th>Gender</th><th>Age</th><th>Country</th></tr>
+      </thead>
+      <tbody>
+      {% for profile in recent_profiles %}
+        <tr>
+          <td data-label="Name"><a href="/web/profiles/{{ profile.id }}">{{ profile.name }}</a></td>
+          <td data-label="Gender">{{ profile.gender }}</td>
+          <td data-label="Age">{{ profile.age }}</td>
+          <td data-label="Country">{{ profile.country_id }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </section>
+{% endblock %}

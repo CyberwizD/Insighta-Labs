@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Profiles | Insighta Labs+{% endblock %}
+{% block content %}
+  <section class="hero">
+    <span class="eyebrow">Profiles</span>
+    <h1>Browse the profile intelligence store.</h1>
+    <p>Filter the catalog by gender, country, age group, or age range. Pagination stays consistent with the API response envelope.</p>
+  </section>
+  <form class="filters" method="get">
+    <label>Gender
+      <select name="gender">
+        <option value="">Any</option>
+        <option value="male" {% if filters.gender == "male" %}selected{% endif %}>Male</option>
+        <option value="female" {% if filters.gender == "female" %}selected{% endif %}>Female</option>
+      </select>
+    </label>
+    <label>Country
+      <input type="text" name="country" placeholder="NG or nigeria" value="{{ filters.country }}">
+    </label>
+    <label>Age Group
+      <select name="age_group">
+        <option value="">Any</option>
+        <option value="child" {% if filters.age_group == "child" %}selected{% endif %}>Child</option>
+        <option value="teenager" {% if filters.age_group == "teenager" %}selected{% endif %}>Teenager</option>
+        <option value="adult" {% if filters.age_group == "adult" %}selected{% endif %}>Adult</option>
+        <option value="senior" {% if filters.age_group == "senior" %}selected{% endif %}>Senior</option>
+      </select>
+    </label>
+    <label>Min Age
+      <input type="number" name="min_age" min="0" value="{{ filters.min_age }}">
+    </label>
+    <label>Max Age
+      <input type="number" name="max_age" min="0" value="{{ filters.max_age }}">
+    </label>
+    <button type="submit">Apply Filters</button>
+  </form>
+  <p style="margin-top: 16px;">Showing page {{ page }} of {{ total_pages if total_pages else 1 }} with {{ total }} total profiles.</p>
+  <table>
+    <thead>
+      <tr><th>Name</th><th>Gender</th><th>Age Group</th><th>Age</th><th>Country</th></tr>
+    </thead>
+    <tbody>
+    {% for profile in profiles %}
+      <tr>
+        <td data-label="Name"><a href="/web/profiles/{{ profile.id }}">{{ profile.name }}</a></td>
+        <td data-label="Gender">{{ profile.gender }}</td>
+        <td data-label="Age Group">{{ profile.age_group }}</td>
+        <td data-label="Age">{{ profile.age }}</td>
+        <td data-label="Country">{{ profile.country_name }} ({{ profile.country_id }})</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}

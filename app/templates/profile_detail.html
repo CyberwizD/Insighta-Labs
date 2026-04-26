@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}{{ profile.name }} | Insighta Labs+{% endblock %}
+{% block content %}
+  <section class="hero">
+    <span class="eyebrow">Profile Detail</span>
+    <h1>{{ profile.name }}</h1>
+    <p>Confidence-driven demographic estimation from the shared profile intelligence system.</p>
+  </section>
+  <section class="grid cards">
+    <article class="card"><h2>Gender</h2><p>{{ profile.gender }} ({{ profile.gender_probability }})</p></article>
+    <article class="card"><h2>Age</h2><p>{{ profile.age }} years, {{ profile.age_group }}</p></article>
+    <article class="card"><h2>Country</h2><p>{{ profile.country_name }} ({{ profile.country_id }}, {{ profile.country_probability }})</p></article>
+    <article class="card"><h2>Sample Size</h2><p>{{ profile.sample_size }}</p></article>
+  </section>
+{% endblock %}

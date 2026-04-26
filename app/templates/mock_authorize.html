@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Mock GitHub | Insighta Labs+{% endblock %}
+{% block content %}
+  <section class="hero">
+    <span class="eyebrow">Mock GitHub</span>
+    <h1>Local OAuth consent for manual testing.</h1>
+    <p>Choose a role or enter a custom username to complete the same redirect-based auth flow without external GitHub credentials.</p>
+  </section>
+  <section class="grid cards">
+    <article class="card">
+      <h2>Quick Roles</h2>
+      <div class="nav-links">
+        <a class="button" href="/mock/github/authorize?{{ admin_query }}">Continue as Admin</a>
+        <a class="button alt" href="/mock/github/authorize?{{ analyst_query }}">Continue as Analyst</a>
+      </div>
+    </article>
+    <article class="card">
+      <h2>Custom User</h2>
+      <form class="stack" method="get">
+        <input type="hidden" name="state" value="{{ state }}">
+        <input type="hidden" name="redirect_uri" value="{{ redirect_uri }}">
+        <input type="hidden" name="mode" value="{{ mode }}">
+        <label>Username
+          <input type="text" name="username" value="{{ guest_name }}">
+        </label>
+        <label>Role
+          <select name="role">
+            <option value="analyst">Analyst</option>
+            <option value="admin">Admin</option>
+          </select>
+        </label>
+        <button type="submit">Authorize</button>
+      </form>
+    </article>
+  </section>
+{% endblock %}

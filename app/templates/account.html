@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Account | Insighta Labs+{% endblock %}
+{% block content %}
+  <section class="hero">
+    <span class="eyebrow">Account</span>
+    <h1>{{ user.username }}</h1>
+    <p>Authentication and authorization details for the current signed-in user.</p>
+  </section>
+  <section class="grid cards">
+    <article class="card">
+      <h2>GitHub ID</h2>
+      <p>{{ user.github_id }}</p>
+    </article>
+    <article class="card">
+      <h2>Email</h2>
+      <p>{{ user.email or "Not available" }}</p>
+    </article>
+    <article class="card">
+      <h2>Role</h2>
+      <p>{{ user.role }}</p>
+    </article>
+    <article class="card">
+      <h2>User ID</h2>
+      <p>{{ user.id }}</p>
+    </article>
+    <article class="card">
+      <h2>Status</h2>
+      <p>{{ "Active" if user.is_active else "Inactive" }}</p>
+    </article>
+  </section>
+  <form class="inline" method="post" action="/web/logout" style="margin-top: 24px;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit">Log Out</button>
+  </form>
+{% endblock %}

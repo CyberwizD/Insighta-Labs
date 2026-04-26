@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Login | Insighta Labs+{% endblock %}
+{% block content %}
+  <section class="hero">
+    <span class="eyebrow">Secure Access</span>
+    <h1>One backend, two interfaces, role-aware access.</h1>
+    <p>
+      Sign in with GitHub to access the analyst portal, the CLI, and the protected profile APIs.
+      Local development mode includes a mock GitHub provider so you can test the full OAuth flow without external credentials.
+    </p>
+    <div class="nav-links">
+      <a class="button" href="/auth/github?mode=web">Continue with GitHub</a>
+      {% if mock_enabled %}
+        <a class="button alt" href="/mock/github/authorize?state={{ state }}&redirect_uri={{ settings.github_callback_url }}&mode=web">Use Local Mock OAuth</a>
+      {% endif %}
+    </div>
+  </section>
+  <section class="grid cards">
+    <article class="card">
+      <h2>CLI + Web</h2>
+      <p>Both surfaces consume the same profile system and the same auth/session model.</p>
+    </article>
+    <article class="card">
+      <h2>Role Enforcement</h2>
+      <p>Admins can create and delete profiles. Analysts can list, search, and inspect them.</p>
+    </article>
+    <article class="card">
+      <h2>Refresh Tokens</h2>
+      <p>Sessions can be renewed cleanly through the refresh endpoint for both cookies and CLI tokens.</p>
+    </article>
+  </section>
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Search | Insighta Labs+{% endblock %}
+{% block content %}
+  <section class="hero">
+    <span class="eyebrow">Natural Language Search</span>
+    <h1>Ask for patterns the way analysts do.</h1>
+    <p>Try queries like <strong>young males from nigeria</strong> or <strong>adult females above 30</strong>.</p>
+  </section>
+  <form class="inline" method="get">
+    <label>Query
+      <input type="text" name="q" value="{{ q }}" placeholder="young males from nigeria">
+    </label>
+    <button type="submit">Search</button>
+  </form>
+  {% if q %}
+    <p style="margin-top: 16px;">{{ total }} matching profiles found.</p>
+    {% if error_message %}
+      <p style="color: #b54b27;">{{ error_message }}</p>
+    {% endif %}
+    <table>
+      <thead>
+        <tr><th>Name</th><th>Gender</th><th>Age</th><th>Country</th></tr>
+      </thead>
+      <tbody>
+      {% for profile in profiles %}
+        <tr>
+          <td data-label="Name"><a href="/web/profiles/{{ profile.id }}">{{ profile.name }}</a></td>
+          <td data-label="Gender">{{ profile.gender }}</td>
+          <td data-label="Age">{{ profile.age }}</td>
+          <td data-label="Country">{{ profile.country_name }} ({{ profile.country_id }})</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+{% endblock %}
