@@ -35,6 +35,21 @@ class InMemoryRateLimiter:
 rate_limiter = InMemoryRateLimiter()
 
 
+def client_ip(request: Request) -> str:
+    forwarded_for = request.headers.get("x-forwarded-for", "")
+    if forwarded_for:
+        first_hop = forwarded_for.split(",", 1)[0].strip()
+        if first_hop:
+            return first_hop
+    real_ip = request.headers.get("x-real-ip", "").strip()
+    if real_ip:
+        return real_ip
+    cf_ip = request.headers.get("cf-connecting-ip", "").strip()
+    if cf_ip:
+        return cf_ip
+    return request.client.host if request.client else "unknown"
+
+
 def request_identity_key(request: Request) -> str:
     auth_header = request.headers.get("Authorization", "")
     token = ""
@@ -52,5 +67,4 @@ def request_identity_key(request: Request) -> str:
         except jwt.PyJWTError:
             pass
 
-    client_host = request.client.host if request.client else "unknown"
-    return f"ip:{client_host}"
+    return f"ip:{client_ip(request)}"
