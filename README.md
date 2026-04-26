@@ -202,12 +202,20 @@ $env:INSIGHTA_ENABLE_MOCK_GITHUB="true"
 $env:INSIGHTA_APP_BASE_URL="http://127.0.0.1:8000"
 ```
 
+For Railway, set `INSIGHTA_APP_BASE_URL` to the full deployed origin, for example:
+
+```powershell
+$env:INSIGHTA_APP_BASE_URL="https://your-app.up.railway.app"
+```
+
 For real GitHub OAuth:
 
 ```powershell
 $env:INSIGHTA_GITHUB_CLIENT_ID="your-client-id"
 $env:INSIGHTA_GITHUB_CLIENT_SECRET="your-client-secret"
 ```
+
+If you want to keep mock auth available alongside real GitHub OAuth, leave `INSIGHTA_ENABLE_MOCK_GITHUB=true`. The web login page will show separate buttons for each provider.
 
 ### 4. Start the app
 
