@@ -49,7 +49,7 @@ def web_login(request: Request, db: Session = Depends(get_db)):
         template_context(
             request,
             None,
-            github_enabled=bool(settings.github_client_id),
+            github_enabled=True,
             github_login_href="/auth/github?mode=web&provider=github",
             mock_enabled=settings.enable_mock_github,
             mock_login_href=f"/auth/github?{mock_query}",
