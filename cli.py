@@ -14,7 +14,7 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from app.auth import build_code_challenge, generate_code_verifier, generate_state
+from app.services.auth import build_code_challenge, generate_code_verifier, generate_state
 
 app = typer.Typer(help="Insighta Labs+ command line interface.")
 profiles_app = typer.Typer(help="Profile management commands.")
