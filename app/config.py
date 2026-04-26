@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import urlsplit, urlunsplit
 
 from dotenv import load_dotenv
 
@@ -13,6 +14,19 @@ def _as_bool(value: str | None, default: bool = False) -> bool:
     if value is None:
         return default
     return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _normalize_base_url(value: str | None, default: str) -> str:
+    raw = (value or default).strip()
+    if "://" not in raw:
+        scheme = "http" if raw.startswith(("127.0.0.1", "localhost")) else "https"
+        raw = f"{scheme}://{raw}"
+    parts = urlsplit(raw)
+    scheme = parts.scheme or "https"
+    netloc = parts.netloc or parts.path
+    path = "" if parts.netloc else parts.path
+    normalized = urlunsplit((scheme, netloc, path.rstrip("/"), "", ""))
+    return normalized.rstrip("/")
 
 
 @dataclass(slots=True)
@@ -51,7 +65,10 @@ def get_settings() -> Settings:
     }
     return Settings(
         app_name="Insighta Labs+",
-        app_base_url=os.getenv("INSIGHTA_APP_BASE_URL", "http://127.0.0.1:8000"),
+        app_base_url=_normalize_base_url(
+            os.getenv("INSIGHTA_APP_BASE_URL"),
+            "http://127.0.0.1:8000",
+        ),
         database_url=os.getenv("INSIGHTA_DATABASE_URL", default_db),
         secret_key=os.getenv(
             "INSIGHTA_SECRET_KEY",
