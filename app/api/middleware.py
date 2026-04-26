@@ -48,8 +48,9 @@ def register_http_behavior(app: FastAPI) -> None:
                 return response
 
         if request.url.path.startswith("/auth/"):
-            key = f"auth:{client_ip(request)}"
-            if not rate_limiter.allow(key, limit=10):
+            auth_limit = 10 if request.url.path == "/auth/github" else 30
+            key = f"auth:{request.url.path}:{client_ip(request)}"
+            if not rate_limiter.allow(key, limit=auth_limit):
                 response = error("Rate limit exceeded", status.HTTP_429_TOO_MANY_REQUESTS)
                 logger.info(
                     "%s %s %s %.2fms",
