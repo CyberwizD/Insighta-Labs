@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 
 from fastapi import FastAPI, HTTPException, Request, status
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse, Response
 
 from app.api.responses import error
 from app.http_runtime import client_ip, logger, rate_limiter, request_identity_key
@@ -22,6 +22,18 @@ def register_http_behavior(app: FastAPI) -> None:
     @app.middleware("http")
     async def request_contracts(request: Request, call_next):
         started = time.perf_counter()
+
+        if request.method == "OPTIONS" and request.url.path.startswith("/auth/"):
+            response = Response(status_code=status.HTTP_204_NO_CONTENT)
+            response = apply_auth_cors_headers(request, response)
+            logger.info(
+                "%s %s %s %.2fms",
+                request.method,
+                request.url.path,
+                response.status_code,
+                (time.perf_counter() - started) * 1000,
+            )
+            return response
 
         if request.url.path.startswith("/api/"):
             if request.headers.get("X-API-Version") != "1":
