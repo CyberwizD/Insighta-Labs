@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import threading
 import webbrowser
 from dataclasses import dataclass
@@ -21,7 +22,10 @@ profiles_app = typer.Typer(help="Profile management commands.")
 app.add_typer(profiles_app, name="profiles")
 console = Console()
 
-DEFAULT_API_URL = "http://127.0.0.1:8000"
+DEFAULT_API_URL = os.getenv("INSIGHTA_API_URL") or os.getenv(
+    "INSIGHTA_APP_BASE_URL",
+    "http://127.0.0.1:8000",
+)
 CREDENTIALS_PATH = Path.home() / ".insighta" / "credentials.json"
 
 
@@ -181,6 +185,7 @@ def _login_callback_server(port: int):
 def login(
     api_url: str = typer.Option(DEFAULT_API_URL, "--api-url", help="Backend base URL."),
     port: int = typer.Option(8765, "--port", help="Local callback port."),
+    provider: str = typer.Option("auto", "--provider", help="OAuth provider: auto, github, or mock."),
 ):
     base_url = _api_url(api_url)
     state = generate_state()
@@ -189,6 +194,7 @@ def login(
     redirect_uri = f"http://127.0.0.1:{port}/callback"
     query = urlencode(
         {
+            "provider": provider,
             "mode": "cli",
             "state": state,
             "code_challenge": code_challenge,
@@ -221,6 +227,7 @@ def login(
                 "code": result["code"],
                 "state": result["state"],
                 "code_verifier": code_verifier,
+                "redirect_uri": redirect_uri,
             },
             timeout=30,
         )
