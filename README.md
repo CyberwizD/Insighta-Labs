@@ -206,7 +206,10 @@ For Railway, set `INSIGHTA_APP_BASE_URL` to the full deployed origin, for exampl
 
 ```powershell
 $env:INSIGHTA_APP_BASE_URL="https://your-app.up.railway.app"
+$env:WEB_CONCURRENCY="1"
 ```
+
+`WEB_CONCURRENCY=1` is the safe default for this app because the auth rate limiter is in-memory and the default database setup uses SQLite.
 
 For real GitHub OAuth:
 
